@@ -1,11 +1,13 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+
 import 'package:unit_converter_app/category.dart';
 import 'package:unit_converter_app/unit.dart';
 import 'package:unit_converter_app/category_tile.dart';
 import 'package:unit_converter_app/backdrop.dart';
 import 'package:unit_converter_app/unit_converter.dart';
-
-final _backgroundColor = Colors.green[100];
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen();
@@ -21,17 +23,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
   Category _currentCategory;
 
   final _categories = <Category>[];
-
-  static const _categoryNames = <String>[
-    'Length',
-    'Area',
-    'Volume',
-    'Mass',
-    'Time',
-    'Digital Storage',
-    'Energy',
-    'Currency',
-  ];
 
   static const _baseColors = <ColorSwatch>[
     ColorSwatch(0xFF6AB7A8, {
@@ -70,18 +61,41 @@ class _CategoryScreenState extends State<CategoryScreen> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    for (var i = 0; i < _categoryNames.length; i++) {
-      var category = Category(
-        color: _baseColors[i],
-        name: _categoryNames[i],
-        iconLocation: Icons.cake,
-        units: _retrieveUnitList(_categoryNames[i]),
-      );
-      if (i == 0) _defaultCategory = category;
-      _categories.add(category);
+  Future<void> didChangeDependencies() async {
+    super.didChangeDependencies();
+    if (_categories.isEmpty) {
+      await _retrieveLocalCategories();
     }
+  }
+
+  Future<void> _retrieveLocalCategories() async {
+    final json = DefaultAssetBundle.of(context)
+        .loadString('assets/data/regular_units.json');
+    final data = JsonDecoder().convert(await json);
+
+    if (data is! Map) throw ('Data retrieve from API is not a Map');
+
+    var categoryIndex = 0;
+
+    data.keys.forEach((key) {
+      final List<Unit> units =
+          data[key].map<Unit>((dynamic data) => Unit.fromJson(data)).toList();
+
+      var category = Category(
+        name: key,
+        units: units,
+        color: _baseColors[categoryIndex],
+        iconLocation: Icons.cake,
+      );
+
+      setState(() {
+        if (categoryIndex == 0) {
+          _defaultCategory = category;
+        }
+        _categories.add(category);
+      });
+      categoryIndex += 1;
+    });
   }
 
   void _onCategoryTap(Category category) {
@@ -111,13 +125,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
         }).toList(),
       );
     }
-  }
-
-  List<Unit> _retrieveUnitList(String categoryName) {
-    return List.generate(10, (int i) {
-      i += 1;
-      return Unit(name: '$categoryName Unit $i', conversion: i.toDouble());
-    });
   }
 
   @override

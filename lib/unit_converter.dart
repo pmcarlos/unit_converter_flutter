@@ -163,6 +163,7 @@ class _UnitConverterState extends State<UnitConverter> {
   @override
   Widget build(BuildContext context) {
     final input = Padding(
+      key: _inputKey,
       padding: _padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

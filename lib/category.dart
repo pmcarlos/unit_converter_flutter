@@ -3,9 +3,6 @@ import 'package:meta/meta.dart';
 
 import 'package:unit_converter_app/unit.dart';
 
-final _rowHeight = 100.0;
-final _borderRadius = BorderRadius.circular(_rowHeight / 2);
-
 class Category {
   final String name;
   final ColorSwatch color;
