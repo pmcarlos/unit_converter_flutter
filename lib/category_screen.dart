@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:unit_converter_app/category.dart';
 import 'package:unit_converter_app/unit.dart';
+import 'package:unit_converter_app/category_tile.dart';
+import 'package:unit_converter_app/backdrop.dart';
+import 'package:unit_converter_app/unit_converter.dart';
 
 final _backgroundColor = Colors.green[100];
 
@@ -14,6 +17,9 @@ class CategoryScreen extends StatefulWidget {
 }
 
 class _CategoryScreenState extends State<CategoryScreen> {
+  Category _defaultCategory;
+  Category _currentCategory;
+
   final _categories = <Category>[];
 
   static const _categoryNames = <String>[
@@ -67,20 +73,44 @@ class _CategoryScreenState extends State<CategoryScreen> {
   void initState() {
     super.initState();
     for (var i = 0; i < _categoryNames.length; i++) {
-      _categories.add(Category(
+      var category = Category(
         color: _baseColors[i],
         name: _categoryNames[i],
         iconLocation: Icons.cake,
         units: _retrieveUnitList(_categoryNames[i]),
-      ));
+      );
+      if (i == 0) _defaultCategory = category;
+      _categories.add(category);
     }
   }
 
-  Widget _buildCategoryWidgets(List<Widget> categories) {
-    return ListView.builder(
-      itemBuilder: (BuildContext context, int index) => categories[index],
-      itemCount: categories.length,
-    );
+  void _onCategoryTap(Category category) {
+    setState(() {
+      _currentCategory = category;
+    });
+  }
+
+  Widget _buildCategoryWidgets(Orientation deviceOrientation) {
+    if (deviceOrientation == Orientation.portrait) {
+      return ListView.builder(
+        itemBuilder: (BuildContext context, int index) => CategoryTile(
+              category: _categories[index],
+              onTap: _onCategoryTap,
+            ),
+        itemCount: _categories.length,
+      );
+    } else {
+      return GridView.count(
+        crossAxisCount: 2,
+        childAspectRatio: 3.0,
+        children: _categories.map((Category c) {
+          return CategoryTile(
+            category: c,
+            onTap: _onCategoryTap,
+          );
+        }).toList(),
+      );
+    }
   }
 
   List<Unit> _retrieveUnitList(String categoryName) {
@@ -92,25 +122,25 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final listView = Container(
-      color: _backgroundColor,
-      padding: EdgeInsets.symmetric(horizontal: 8.0),
-      child: _buildCategoryWidgets(_categories),
+    assert(debugCheckHasMediaQuery(context));
+    final listView = Padding(
+      padding: EdgeInsets.only(left: 8.0, right: 8.0, bottom: 48.0),
+      child: _buildCategoryWidgets(MediaQuery.of(context).orientation),
     );
 
-    final appBar = AppBar(
-      elevation: 0.0,
-      title: Text(
-        'Unit Converter',
-        style: TextStyle(color: Colors.black, fontSize: 30.0),
-      ),
-      centerTitle: true,
-      backgroundColor: _backgroundColor,
-    );
-
-    return Scaffold(
-      appBar: appBar,
-      body: listView,
+    return Backdrop(
+      currentCategory:
+          _currentCategory == null ? _defaultCategory : _currentCategory,
+      frontPanel: _currentCategory == null
+          ? UnitConverter(
+              category: _defaultCategory,
+            )
+          : UnitConverter(
+              category: _currentCategory,
+            ),
+      backPanel: listView,
+      frontTitle: Text('Unit Converter'),
+      backTitle: Text('Select a Category'),
     );
   }
 }

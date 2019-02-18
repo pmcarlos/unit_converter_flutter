@@ -2,32 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:meta/meta.dart';
 
 import 'package:unit_converter_app/unit.dart';
+import 'package:unit_converter_app/category.dart';
 
 const _padding = EdgeInsets.all(16.0);
 
-class ConverterScreen extends StatefulWidget {
-  final String name;
-  final Color color;
-  final List<Unit> units;
+class UnitConverter extends StatefulWidget {
+  /// The current [Category] for unit conversion.
+  final Category category;
 
-  ConverterScreen(
-      {@required this.name, @required this.color, @required this.units})
-      : assert(name != null),
-        assert(color != null),
-        assert(units != null);
+  /// This [UnitConverter] takes in a [Category] with [Units]. It can't be null.
+  const UnitConverter({
+    @required this.category,
+  }) : assert(category != null);
+
   @override
-  State<StatefulWidget> createState() {
-    return _ConverterScreenState();
-  }
+  _UnitConverterState createState() => _UnitConverterState();
 }
 
-class _ConverterScreenState extends State<ConverterScreen> {
+class _UnitConverterState extends State<UnitConverter> {
   Unit _fromValue;
   Unit _toValue;
   double _inputValue;
   String _convertedValue = '';
   List<DropdownMenuItem> _unitMenuItems;
   bool _showValidationErrors = false;
+  final _inputKey = GlobalKey(debugLabel: 'inputText');
 
   @override
   void initState() {
@@ -36,9 +35,18 @@ class _ConverterScreenState extends State<ConverterScreen> {
     _setDefaults();
   }
 
+  @override
+  void didUpdateWidget(UnitConverter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.category != widget.category) {
+      _createDropdownMenuItems();
+      _setDefaults();
+    }
+  }
+
   void _createDropdownMenuItems() {
     var newItems = <DropdownMenuItem>[];
-    for (var unit in widget.units) {
+    for (var unit in widget.category.units) {
       newItems.add(DropdownMenuItem(
         value: unit.name,
         child: Container(
@@ -56,8 +64,8 @@ class _ConverterScreenState extends State<ConverterScreen> {
 
   void _setDefaults() {
     setState(() {
-      _fromValue = widget.units[0];
-      _toValue = widget.units[1];
+      _fromValue = widget.category.units[0];
+      _toValue = widget.category.units[1];
     });
   }
 
@@ -102,7 +110,7 @@ class _ConverterScreenState extends State<ConverterScreen> {
   }
 
   Unit _getUnit(String unitName) {
-    return widget.units.firstWhere(
+    return widget.category.units.firstWhere(
       (Unit unit) {
         return unit.name == unitName;
       },
@@ -164,7 +172,7 @@ class _ConverterScreenState extends State<ConverterScreen> {
             decoration: InputDecoration(
                 labelStyle: Theme.of(context).textTheme.display1,
                 errorText:
-                    _showValidationErrors ? 'Invalid input entered' : null,
+                    _showValidationErrors ? 'Invalid number entered' : null,
                 labelText: 'Input',
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(0.0))),
@@ -200,14 +208,23 @@ class _ConverterScreenState extends State<ConverterScreen> {
       ),
     );
 
-    final converter = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final converter = ListView(
       children: <Widget>[input, arrows, output],
     );
 
     return Padding(
-      padding: _padding,
-      child: converter,
-    );
+        padding: _padding,
+        child: OrientationBuilder(
+          builder: (BuildContext context, Orientation orientation) {
+            if (orientation == Orientation.portrait) return converter;
+
+            return Center(
+              child: Container(
+                width: 450,
+                child: converter,
+              ),
+            );
+          },
+        ));
   }
 }
