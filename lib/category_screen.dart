@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import 'package:unit_converter_app/api.dart';
 import 'package:unit_converter_app/category.dart';
 import 'package:unit_converter_app/unit.dart';
 import 'package:unit_converter_app/category_tile.dart';
@@ -60,11 +61,22 @@ class _CategoryScreenState extends State<CategoryScreen> {
     }),
   ];
 
+  static const _icons = <String>[
+    'assets/icons/length.png',
+    'assets/icons/area.png',
+    'assets/icons/volume.png',
+    'assets/icons/mass.png',
+    'assets/icons/time.png',
+    'assets/icons/digital_storage.png',
+    'assets/icons/power.png',
+    'assets/icons/currency.png',
+  ];
   @override
   Future<void> didChangeDependencies() async {
     super.didChangeDependencies();
     if (_categories.isEmpty) {
       await _retrieveLocalCategories();
+      await _retrieveApiCategories();
     }
   }
 
@@ -85,7 +97,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
         name: key,
         units: units,
         color: _baseColors[categoryIndex],
-        iconLocation: Icons.cake,
+        iconLocation: _icons[categoryIndex],
       );
 
       setState(() {
@@ -98,6 +110,35 @@ class _CategoryScreenState extends State<CategoryScreen> {
     });
   }
 
+  Future<void> _retrieveApiCategories() async {
+    setState(() {
+      _categories.add(Category(
+          name: apiCategory['name'],
+          units: [],
+          color: _baseColors.last,
+          iconLocation: _icons.last));
+    });
+
+    final api = Api();
+    final jsonUnits = await api.getUnits(apiCategory['route']);
+
+    if (jsonUnits != null) {
+      final units = <Unit>[];
+      for (var unit in jsonUnits) {
+        units.add(Unit.fromJson(unit));
+      }
+
+      setState(() {
+        _categories.removeLast();
+        _categories.add(Category(
+            name: apiCategory['name'],
+            units: units,
+            color: _baseColors.last,
+            iconLocation: _icons.last));
+      });
+    }
+  }
+
   void _onCategoryTap(Category category) {
     setState(() {
       _currentCategory = category;
@@ -107,10 +148,16 @@ class _CategoryScreenState extends State<CategoryScreen> {
   Widget _buildCategoryWidgets(Orientation deviceOrientation) {
     if (deviceOrientation == Orientation.portrait) {
       return ListView.builder(
-        itemBuilder: (BuildContext context, int index) => CategoryTile(
-              category: _categories[index],
-              onTap: _onCategoryTap,
-            ),
+        itemBuilder: (BuildContext context, int index) {
+          var _category = _categories[index];
+          return CategoryTile(
+            category: _category,
+            onTap:
+                _category.name == apiCategory['name'] && _category.units.isEmpty
+                    ? null
+                    : _onCategoryTap,
+          );
+        },
         itemCount: _categories.length,
       );
     } else {
@@ -129,12 +176,20 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_categories.isEmpty) {
+      return Center(
+        child: Container(
+          height: 180.0,
+          width: 180.0,
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
     assert(debugCheckHasMediaQuery(context));
     final listView = Padding(
       padding: EdgeInsets.only(left: 8.0, right: 8.0, bottom: 48.0),
       child: _buildCategoryWidgets(MediaQuery.of(context).orientation),
     );
-
     return Backdrop(
       currentCategory:
           _currentCategory == null ? _defaultCategory : _currentCategory,
